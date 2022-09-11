@@ -1,0 +1,89 @@
+stages:
+  - build
+  - test
+  - deploy
+
+install dependencies:
+  image: php:8
+  stage: build
+  cache:
+    paths:
+      - vendor
+  script:
+    - apt-get update -yqq
+    - apt-get install git unzip zip libzip-dev zlib1g-dev -yqq
+    - docker-php-ext-install zip
+    - pecl install xdebug && docker-php-ext-enable xdebug
+    - curl -sS https://getcomposer.org/installer | php
+    - php composer.phar install
+  artifacts:
+    untracked: true
+    paths:
+    - vendor/
+    exclude:
+      - .secure_files
+
+load secure files:
+  stage: build
+  script:
+    - apt-get update -yqq
+    - apt-get install curl -yqq
+    - curl -s https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/load-secure-files/-/raw/main/installer | bash
+  artifacts:
+    untracked: true
+    paths:
+      - .secure_files
+    exclude:
+      - .secure_files
+all:
+  image: php:8
+  stage: test
+  needs:
+    - install dependencies
+  script:
+    - vendor/bin/phpunit --configuration phpunit.xml
+
+coverage:
+  image: php:8
+  stage: test
+  before_script:
+    - apt-get update -yqq
+    - apt-get install git unzip zip libzip-dev zlib1g-dev -yqq
+    - docker-php-ext-install zip
+    - pecl install xdebug && docker-php-ext-enable xdebug
+    - curl -sS https://getcomposer.org/installer | php
+    - php composer.phar install
+  needs:
+    - install dependencies
+  variables:
+    XDEBUG_MODE: coverage
+  script:
+    - vendor/bin/phpunit --configuration phpunit.xml --coverage-cobertura=coverage.cobertura.xml --log-junit junit.xml 
+  after_script:
+    - php artisan cobertura:sanitize -n -q coverage.cobertura.xml
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.cobertura.xml
+      junit: junit.xml
+
+build docker image:
+  stage: build
+  image: docker:20.10.16
+  only:
+    variables:
+      - ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop")
+  needs:
+    - install dependencies
+    - load secure files
+  services:
+    - docker:20.10.16-dind
+  variables:
+    IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  before_script:
+    - cp .secure_files/.env .env
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
