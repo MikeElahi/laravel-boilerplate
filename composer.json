@@ -1,7 +1,7 @@
 {
-    "name": "laravel/laravel",
+    "name": "wigeeky/laravel",
     "type": "project",
-    "description": "The Laravel Framework.",
+    "description": "Customer Boilerplate of the Laravel Framework.",
     "keywords": ["framework", "laravel"],
     "license": "MIT",
     "require": {
