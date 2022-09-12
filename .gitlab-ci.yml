@@ -23,18 +23,6 @@ install dependencies:
     exclude:
       - .secure_files
 
-load secure files:
-  stage: build
-  script:
-    - apt-get update -yqq
-    - apt-get install curl -yqq
-    - curl -s https://gitlab.com/gitlab-org/incubation-engineering/mobile-devops/load-secure-files/-/raw/main/installer | bash
-  artifacts:
-    untracked: true
-    paths:
-      - .secure_files
-    exclude:
-      - .secure_files
 all:
   image: php:8
   stage: test
@@ -76,13 +64,10 @@ build docker image:
       - ($CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "develop")
   needs:
     - install dependencies
-    - load secure files
   services:
     - docker:20.10.16-dind
   variables:
     IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
-  before_script:
-    - cp .secure_files/.env .env
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
     - docker build -t $IMAGE_TAG .
