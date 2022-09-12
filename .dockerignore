@@ -1,0 +1,6 @@
+.editorconfig
+.env.example
+.git/
+.gitattributes
+.gitignore
+.gitlab-ci.yml
