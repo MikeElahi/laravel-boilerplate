@@ -3,12 +3,13 @@ stages:
   - test
   - deploy
 
+cache:
+  paths:
+    - vendor/
+
 install dependencies:
   image: php:8
   stage: build
-  cache:
-    paths:
-      - vendor
   script:
     - apt-get update -yqq
     - apt-get install git unzip zip libzip-dev zlib1g-dev -yqq
